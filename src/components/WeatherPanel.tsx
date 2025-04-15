@@ -1,17 +1,32 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { fetchWeatherData } from '../services/weatherService';
+import { fetchWeatherData, fetchForecastData } from '../services/weatherService';
 import { WeatherPanelProps } from '../lib/types';
+import ForecastChart from './ForecastChart';
+import HourlyForecast from './HourlyForecast';
+import DailyForecast from './DailyForecast';
 
 const WeatherPanel = ({ city, onWeatherDataUpdate }: WeatherPanelProps) => {
   const {
     data: weatherData,
-    isLoading,
-    error,
-    isError,
+    isLoading: isLoadingWeather,
+    error: weatherError,
+    isError: isWeatherError,
   } = useQuery({
     queryKey: ['weather', city],
     queryFn: () => fetchWeatherData(city),
+    enabled: !!city,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const {
+    data: forecastData,
+    isLoading: isLoadingForecast,
+    error: forecastError,
+    isError: isForecastError,
+  } = useQuery({
+    queryKey: ['forecast', city],
+    queryFn: () => fetchForecastData(city),
     enabled: !!city,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -21,6 +36,10 @@ const WeatherPanel = ({ city, onWeatherDataUpdate }: WeatherPanelProps) => {
       onWeatherDataUpdate(weatherData);
     }
   }, [weatherData, onWeatherDataUpdate]);
+
+  const isLoading = isLoadingWeather || isLoadingForecast;
+  const isError = isWeatherError || isForecastError;
+  const error = weatherError || forecastError;
 
   if (!city) {
     return (
@@ -54,7 +73,7 @@ const WeatherPanel = ({ city, onWeatherDataUpdate }: WeatherPanelProps) => {
     );
   }
 
-  if (!weatherData) {
+  if (!weatherData || !forecastData) {
     return null;
   }
 
@@ -118,6 +137,12 @@ const WeatherPanel = ({ city, onWeatherDataUpdate }: WeatherPanelProps) => {
             <p className="font-bold">{formattedTime(sys.sunset)}</p>
           </div>
         </div>
+
+        <ForecastChart hourlyData={forecastData.hourly.list} />
+        
+        <HourlyForecast hourlyData={forecastData.hourly.list} />
+        
+        <DailyForecast dailyData={forecastData.daily} />
       </div>
     </div>
   );
