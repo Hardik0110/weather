@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { HeaderProps } from '../lib/types';
 import { fetchCitySuggestions } from '../services/weatherService';
+import React from 'react';
 
 const Header = ({ onCitySearch }: HeaderProps) => {
   const [searchInput, setSearchInput] = useState('');
