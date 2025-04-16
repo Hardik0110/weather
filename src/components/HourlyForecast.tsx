@@ -39,4 +39,4 @@ const HourlyForecast = ({ hourlyData }: HourlyForecastProps) => {
   );
 };
 
-export default HourlyForecast;
+export default HourlyForecast

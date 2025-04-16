@@ -75,6 +75,11 @@ export interface DailyForecast {
 export interface ForecastData {
   hourly: HourlyForecast;
   daily: DailyForecast[];
+  city: {
+    name: string;
+    country: string;
+  };
+  timezone: string;
 }
 
 export interface HeaderProps {

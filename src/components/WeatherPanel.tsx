@@ -7,145 +7,86 @@ import HourlyForecast from './HourlyForecast';
 import DailyForecast from './DailyForecast';
 
 const WeatherPanel = ({ city, onWeatherDataUpdate }: WeatherPanelProps) => {
+  const queryConfig = { staleTime: 5 * 60 * 1000, enabled: !!city };
+
   const {
     data: weatherData,
-    isLoading: isLoadingWeather,
+    isLoading: isWeatherLoading,
     error: weatherError,
-    isError: isWeatherError,
-  } = useQuery({
-    queryKey: ['weather', city],
-    queryFn: () => fetchWeatherData(city),
-    enabled: !!city,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  } = useQuery({ queryKey: ['weather', city], queryFn: () => fetchWeatherData(city), ...queryConfig });
 
   const {
     data: forecastData,
-    isLoading: isLoadingForecast,
+    isLoading: isForecastLoading,
     error: forecastError,
-    isError: isForecastError,
-  } = useQuery({
-    queryKey: ['forecast', city],
-    queryFn: () => fetchForecastData(city),
-    enabled: !!city,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  } = useQuery({ queryKey: ['forecast', city], queryFn: () => fetchForecastData(city), ...queryConfig });
 
   useEffect(() => {
-    if (weatherData) {
-      onWeatherDataUpdate(weatherData);
-    }
+    if (weatherData) onWeatherDataUpdate(weatherData);
   }, [weatherData, onWeatherDataUpdate]);
 
-  const isLoading = isLoadingWeather || isLoadingForecast;
-  const isError = isWeatherError || isForecastError;
+  const isLoading = isWeatherLoading || isForecastLoading;
   const error = weatherError || forecastError;
 
-  if (!city) {
-    return (
-      <div className="w-full md:w-1/3 p-6 bg-gray-50 overflow-y-auto">
-        <div className="text-center py-10">
-          <p className="text-gray-500">Search for a city to view weather data</p>
-        </div>
-      </div>
-    );
-  }
+  if (!city) return <PanelMessage message="Search for a city to view weather data" />;
+  if (isLoading) return <PanelMessage message="Loading weather data..." />;
+  if (error) return <PanelMessage message={error instanceof Error ? error.message : 'Failed to load weather data'} isError />;
 
-  if (isLoading) {
-    return (
-      <div className="w-full md:w-1/3 p-6 bg-gray-50 overflow-y-auto">
-        <div className="text-center py-10">
-          <p className="text-gray-500">Loading weather data...</p>
-        </div>
-      </div>
-    );
-  }
+  if (!weatherData || !forecastData) return null;
 
-  if (isError) {
-    return (
-      <div className="w-full md:w-1/3 p-6 bg-gray-50 overflow-y-auto">
-        <div className="text-center py-10">
-          <p className="text-red-500">
-            {error instanceof Error ? error.message : 'Failed to load weather data'}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const { name, sys, main, weather, wind } = weatherData;
 
-  if (!weatherData || !forecastData) {
-    return null;
-  }
-
-  const {
-    name,
-    sys,
-    main,
-    weather,
-    wind,
-  } = weatherData;
-
-  const formattedTemp = (temp: number) => `${Math.round(temp)}°C`;
-  const formattedTime = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const metrics = [
+    ['Feels Like', `${Math.round(main.feels_like)}°C`],
+    ['Humidity', `${main.humidity}%`],
+    ['Wind Speed', `${wind.speed} m/s`],
+    ['Pressure', `${main.pressure} hPa`],
+    ['Sunrise', formatTime(sys.sunrise)],
+    ['Sunset', formatTime(sys.sunset)],
+  ];
 
   return (
     <div className="w-full md:w-1/3 p-6 bg-gray-50 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold">
-            {name}, {sys.country}
-          </h2>
+          <h2 className="text-2xl font-bold">{name}, {sys.country}</h2>
           <div className="flex justify-center items-center my-4">
             <img
               src={`https://openweathermap.org/img/wn/${weather[0].icon}@2x.png`}
               alt={weather[0].description}
               className="w-16 h-16"
             />
-            <span className="text-4xl font-bold ml-2">{formattedTemp(main.temp)}</span>
+            <span className="text-4xl font-bold ml-2">{Math.round(main.temp)}°C</span>
           </div>
           <p className="text-xl capitalize">{weather[0].description}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-gray-100 p-3 rounded">
-            <p className="text-gray-500 text-sm">Feels Like</p>
-            <p className="font-bold">{formattedTemp(main.feels_like)}</p>
-          </div>
-          <div className="bg-gray-100 p-3 rounded">
-            <p className="text-gray-500 text-sm">Humidity</p>
-            <p className="font-bold">{main.humidity}%</p>
-          </div>
-          <div className="bg-gray-100 p-3 rounded">
-            <p className="text-gray-500 text-sm">Wind Speed</p>
-            <p className="font-bold">{wind.speed} m/s</p>
-          </div>
-          <div className="bg-gray-100 p-3 rounded">
-            <p className="text-gray-500 text-sm">Pressure</p>
-            <p className="font-bold">{main.pressure} hPa</p>
-          </div>
-          <div className="bg-gray-100 p-3 rounded">
-            <p className="text-gray-500 text-sm">Sunrise</p>
-            <p className="font-bold">{formattedTime(sys.sunrise)}</p>
-          </div>
-          <div className="bg-gray-100 p-3 rounded">
-            <p className="text-gray-500 text-sm">Sunset</p>
-            <p className="font-bold">{formattedTime(sys.sunset)}</p>
-          </div>
+          {metrics.map(([label, value]) => (
+            <div key={label} className="bg-gray-100 p-3 rounded">
+              <p className="text-gray-500 text-sm">{label}</p>
+              <p className="font-bold">{value}</p>
+            </div>
+          ))}
         </div>
 
         <ForecastChart hourlyData={forecastData.hourly.list} />
-        
         <HourlyForecast hourlyData={forecastData.hourly.list} />
-        
         <DailyForecast dailyData={forecastData.daily} />
       </div>
     </div>
   );
 };
+
+const PanelMessage = ({ message, isError = false }: { message: string; isError?: boolean }) => (
+  <div className="w-full md:w-1/3 p-6 bg-gray-50 overflow-y-auto">
+    <div className="text-center py-10">
+      <p className={isError ? 'text-red-500' : 'text-gray-500'}>{message}</p>
+    </div>
+  </div>
+);
+
+const formatTime = (timestamp: number) =>
+  new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 export default WeatherPanel;
